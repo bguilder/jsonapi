@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"reflect"
 	"sort"
-	"strings"
 	"testing"
 	"time"
 )
@@ -27,7 +26,7 @@ func TestUnmarshall_attrStringSlice(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := UnmarshalPayload(bytes.NewReader(b), out); err != nil {
+	if err := UnmarshalPayload(b, out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -73,7 +72,7 @@ func TestUnmarshalToStructWithPointerAttr(t *testing.T) {
 func TestUnmarshalPayload_ptrsAllNil(t *testing.T) {
 	out := new(WithPointer)
 	if err := UnmarshalPayload(
-		strings.NewReader(`{"data": {}}`), out); err != nil {
+		[]byte(`{"data": {}}`), out); err != nil {
 		t.Fatalf("Error unmarshalling to Foo")
 	}
 
@@ -159,7 +158,7 @@ func TestStringPointerField(t *testing.T) {
 
 	// Parse JSON API payload
 	book := new(Book)
-	if err := UnmarshalPayload(bytes.NewReader(payload), book); err != nil {
+	if err := UnmarshalPayload(payload, book); err != nil {
 		t.Fatal(err)
 	}
 
@@ -180,7 +179,7 @@ func TestMalformedTag(t *testing.T) {
 }
 
 func TestUnmarshalInvalidJSON(t *testing.T) {
-	in := strings.NewReader("{}")
+	in := []byte("{}")
 	out := new(Blog)
 
 	err := UnmarshalPayload(in, out)
@@ -237,10 +236,9 @@ func TestUnmarshal_nonNumericID(t *testing.T) {
 	data := samplePayloadWithoutIncluded()
 	data["data"].(map[string]interface{})["id"] = "non-numeric-id"
 	payload, _ := payload(data)
-	in := bytes.NewReader(payload)
 	out := new(Post)
 
-	if err := UnmarshalPayload(in, out); err != ErrBadJSONAPIID {
+	if err := UnmarshalPayload(payload, out); err != ErrBadJSONAPIID {
 		t.Fatalf(
 			"Was expecting a `%s` error, got `%s`",
 			ErrBadJSONAPIID,
@@ -274,12 +272,11 @@ func TestUnmarshalParsesISO8601(t *testing.T) {
 		},
 	}
 
-	in := bytes.NewBuffer(nil)
-	json.NewEncoder(in).Encode(payload)
+	payloadBytes, _ := json.Marshal(payload)
 
 	out := new(Timestamp)
 
-	if err := UnmarshalPayload(in, out); err != nil {
+	if err := UnmarshalPayload(payloadBytes, out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -300,12 +297,11 @@ func TestUnmarshalParsesISO8601TimePointer(t *testing.T) {
 		},
 	}
 
-	in := bytes.NewBuffer(nil)
-	json.NewEncoder(in).Encode(payload)
+	payloadBytes, _ := json.Marshal(payload)
 
 	out := new(Timestamp)
 
-	if err := UnmarshalPayload(in, out); err != nil {
+	if err := UnmarshalPayload(payloadBytes, out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -326,22 +322,20 @@ func TestUnmarshalInvalidISO8601(t *testing.T) {
 		},
 	}
 
-	in := bytes.NewBuffer(nil)
-	json.NewEncoder(in).Encode(payload)
+	payloadBytes, _ := json.Marshal(payload)
 
 	out := new(Timestamp)
 
-	if err := UnmarshalPayload(in, out); err != ErrInvalidISO8601 {
+	if err := UnmarshalPayload(payloadBytes, out); err != ErrInvalidISO8601 {
 		t.Fatalf("Expected ErrInvalidISO8601, got %v", err)
 	}
 }
 
 func TestUnmarshalRelationshipsWithoutIncluded(t *testing.T) {
 	data, _ := payload(samplePayloadWithoutIncluded())
-	in := bytes.NewReader(data)
 	out := new(Post)
 
-	if err := UnmarshalPayload(in, out); err != nil {
+	if err := UnmarshalPayload(data, out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -393,10 +387,9 @@ func TestUnmarshalNullRelationship(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	in := bytes.NewReader(data)
 	out := new(Post)
 
-	if err := UnmarshalPayload(in, out); err != nil {
+	if err := UnmarshalPayload(data, out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -426,10 +419,9 @@ func TestUnmarshalNullRelationshipInSlice(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	in := bytes.NewReader(data)
 	out := new(Post)
 
-	if err := UnmarshalPayload(in, out); err != nil {
+	if err := UnmarshalPayload(data, out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -482,10 +474,10 @@ func TestUnmarshalNestedRelationshipsEmbedded(t *testing.T) {
 	if err := MarshalOnePayloadEmbedded(out, testModel()); err != nil {
 		t.Fatal(err)
 	}
-
+	data, _ := ioutil.ReadAll(out)
 	model := new(Blog)
 
-	if err := UnmarshalPayload(out, model); err != nil {
+	if err := UnmarshalPayload(data, model); err != nil {
 		t.Fatal(err)
 	}
 
@@ -601,9 +593,8 @@ func TestUnmarshalManyPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	in := bytes.NewReader(data)
 
-	posts, err := UnmarshalManyPayload(in, reflect.TypeOf(new(Post)))
+	posts, err := UnmarshalManyPayload(data, reflect.TypeOf(new(Post)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -741,7 +732,7 @@ func payload(data map[string]interface{}) (result []byte, err error) {
 	return
 }
 
-func samplePayload() io.Reader {
+func samplePayload() []byte {
 	payload := &OnePayload{
 		Data: &Node{
 			Type: "blogs",
@@ -805,13 +796,12 @@ func samplePayload() io.Reader {
 		},
 	}
 
-	out := bytes.NewBuffer(nil)
-	json.NewEncoder(out).Encode(payload)
+	payloadBytes, _ := json.Marshal(payload)
 
-	return out
+	return payloadBytes
 }
 
-func samplePayloadWithID() io.Reader {
+func samplePayloadWithID() []byte {
 	payload := &OnePayload{
 		Data: &Node{
 			ID:   "2",
@@ -823,13 +813,12 @@ func samplePayloadWithID() io.Reader {
 		},
 	}
 
-	out := bytes.NewBuffer(nil)
-	json.NewEncoder(out).Encode(payload)
+	payloadBytes, _ := json.Marshal(payload)
 
-	return out
+	return payloadBytes
 }
 
-func samplePayloadWithBadTypes(m map[string]interface{}) io.Reader {
+func samplePayloadWithBadTypes(m map[string]interface{}) []byte {
 	payload := &OnePayload{
 		Data: &Node{
 			ID:         "2",
@@ -838,13 +827,12 @@ func samplePayloadWithBadTypes(m map[string]interface{}) io.Reader {
 		},
 	}
 
-	out := bytes.NewBuffer(nil)
-	json.NewEncoder(out).Encode(payload)
+	payloadBytes, _ := json.Marshal(payload)
 
-	return out
+	return payloadBytes
 }
 
-func sampleWithPointerPayload(m map[string]interface{}) io.Reader {
+func sampleWithPointerPayload(m map[string]interface{}) []byte {
 	payload := &OnePayload{
 		Data: &Node{
 			ID:         "2",
@@ -853,10 +841,9 @@ func sampleWithPointerPayload(m map[string]interface{}) io.Reader {
 		},
 	}
 
-	out := bytes.NewBuffer(nil)
-	json.NewEncoder(out).Encode(payload)
+	payloadBytes, _ := json.Marshal(payload)
 
-	return out
+	return payloadBytes
 }
 
 func testModel() *Blog {
@@ -927,21 +914,19 @@ func testModel() *Blog {
 	}
 }
 
-func samplePayloadWithSideloaded() io.Reader {
+func samplePayloadWithSideloaded() []byte {
 	testModel := testModel()
+	data, _ := json.Marshal(testModel)
 
-	out := bytes.NewBuffer(nil)
-	MarshalPayload(out, testModel)
-
-	return out
+	return data
 }
 
 func sampleSerializedEmbeddedTestModel() *Blog {
 	out := bytes.NewBuffer(nil)
 	MarshalOnePayloadEmbedded(out, testModel())
-
+	data, _ := ioutil.ReadAll(out)
 	blog := new(Blog)
-	UnmarshalPayload(out, blog)
+	UnmarshalPayload(data, blog)
 
 	return blog
 }

@@ -9,6 +9,7 @@ type Payloader interface {
 
 // OnePayload is used to represent a generic JSON API payload where a single
 // resource (Node) was included as an {} in the "data" key
+//easyjson:json
 type OnePayload struct {
 	Data     *Node   `json:"data"`
 	Included []*Node `json:"included,omitempty"`
@@ -22,6 +23,7 @@ func (p *OnePayload) clearIncluded() {
 
 // ManyPayload is used to represent a generic JSON API payload where many
 // resources (Nodes) were included in an [] in the "data" key
+//easyjson:json
 type ManyPayload struct {
 	Data     []*Node `json:"data"`
 	Included []*Node `json:"included,omitempty"`
@@ -34,6 +36,7 @@ func (p *ManyPayload) clearIncluded() {
 }
 
 // Node is used to represent a generic JSON API Resource
+//easyjson:json
 type Node struct {
 	Type          string                 `json:"type"`
 	ID            string                 `json:"id,omitempty"`
@@ -45,6 +48,7 @@ type Node struct {
 }
 
 // RelationshipOneNode is used to represent a generic has one JSON API relation
+//easyjson:json
 type RelationshipOneNode struct {
 	Data  *Node  `json:"data"`
 	Links *Links `json:"links,omitempty"`
@@ -53,6 +57,7 @@ type RelationshipOneNode struct {
 
 // RelationshipManyNode is used to represent a generic has many JSON API
 // relation
+//easyjson:json
 type RelationshipManyNode struct {
 	Data  []*Node `json:"data"`
 	Links *Links  `json:"links,omitempty"`
